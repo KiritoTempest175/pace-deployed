@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { MessageSquare, ArrowRight, Code2, BookOpen, Globe2 } from 'lucide-react'
+import { getSessionId } from '../utils/session'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
@@ -35,7 +36,9 @@ export function RecentChats() {
   useEffect(() => {
     const fetchRecent = async () => {
       try {
-        const res = await fetch(`${API_BASE}/conversations`)
+        const res = await fetch(`${API_BASE}/conversations`, {
+          headers: { 'X-Session-ID': getSessionId() }
+        })
         if (res.ok) {
           const data = await res.json()
           if (data && data.length > 0) {

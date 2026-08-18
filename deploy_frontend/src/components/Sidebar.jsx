@@ -13,8 +13,8 @@ import {
   Code2,
   BookOpen,
   Globe2
-} from 'lucide-react'
 import { telemetryStore } from '../utils/telemetryStore'
+import { getSessionId } from '../utils/session'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
@@ -62,7 +62,9 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, on
   const fetchConversations = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${API_BASE}/conversations`)
+      const res = await fetch(`${API_BASE}/conversations`, {
+        headers: { 'X-Session-ID': getSessionId() }
+      })
       if (res.ok) {
         const data = await res.json()
         setChatHistory(data)

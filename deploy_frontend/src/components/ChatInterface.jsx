@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { telemetryStore } from '../utils/telemetryStore'
 import { ThinkingIndicator } from './ThinkingIndicator'
+import { getSessionId } from '../utils/session'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
@@ -119,6 +120,9 @@ export function ChatInterface({ type }) {
       try {
         const res = await fetch(`${API_BASE}/conversations/${activeChatId}`, {
           signal: controller.signal,
+          headers: {
+            'X-Session-ID': getSessionId()
+          }
         })
 
         if (!res.ok) {
@@ -213,7 +217,10 @@ export function ChatInterface({ type }) {
     try {
       const res = await fetch(`${API_BASE}/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Session-ID': getSessionId()
+        },
         body: JSON.stringify({
           text: value,
           mode: type,
@@ -323,6 +330,9 @@ export function ChatInterface({ type }) {
 
       const res = await fetch(`${API_BASE}/upload`, {
         method: 'POST',
+        headers: {
+          'X-Session-ID': getSessionId()
+        },
         body: formData,
       })
       const data = await res.json()
