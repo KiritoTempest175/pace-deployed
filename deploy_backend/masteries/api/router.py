@@ -189,7 +189,14 @@ def generate(request: PredictRequest, x_session_id: str = Header("default")):
                 try:
                     for result in job:
                         q.put(("result", result))
-                    q.put(("done", None))
+                    if job.status() and not job.status().success:
+                        err = job.exception()
+                        if err:
+                            q.put(("error", err))
+                        else:
+                            q.put(("error", Exception("Job failed without a specific error message.")))
+                    else:
+                        q.put(("done", None))
                 except Exception as e:
                     q.put(("error", e))
 
