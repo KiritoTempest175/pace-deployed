@@ -177,17 +177,41 @@ def generate(request: PredictRequest):
                 api_name="/generate_stream_gpu"
             )
 
-            # Gradio Client yields outputs iteratively if the function is a generator
-            for result in job:
-                # `result` is the string yielded by the Gradio function
+            import queue
+            import threading
+
+            q = queue.Queue()
+
+            def run_job():
+                try:
+                    for result in job:
+                        q.put(("result", result))
+                    q.put(("done", None))
+                except Exception as e:
+                    q.put(("error", e))
+
+            t = threading.Thread(target=run_job)
+            t.start()
+
+            # Read from queue and yield, sending keepalives every 5 seconds if idle
+            while True:
+                try:
+                    msg_type, data = q.get(timeout=5.0)
+                except queue.Empty:
+                    # Yield SSE comment to keep connection alive
+                    yield ": keepalive\n\n"
+                    continue
+
+                if msg_type == "done":
+                    break
+                elif msg_type == "error":
+                    raise data
+                
+                result = data
                 if not result:
                     continue
                     
                 try:
-                    # In our case, gradio gives us the *entire* accumulated string from the generator so far in each tick if we yielded everything, but wait!
-                    # If we yield json strings line by line in our generator, gradio_client might yield the accumulated outputs, or the latest output.
-                    # Since our generator yields independent JSON strings, gradio actually returns the *latest* yielded value, not the accumulated one, but wait, `gradio_client` with `submit()` gives us exactly what was yielded!
-                    # Actually, if we yield a string per token, Gradio client might yield the string.
                     # Gradio strings can contain multiple yielded lines if the generator is fast.
                     last_line = result.strip().split("\n")[-1]
                     event = json.loads(last_line)
@@ -213,6 +237,8 @@ def generate(request: PredictRequest):
                     update_last_execution_metrics(current_m)
                     yield f"data: {json.dumps({'type': 'telemetry', 'metrics': current_m})}\n\n"
                     last_telemetry_emit = now
+
+            t.join()
 
             # Save completed message to DB
             add_message(
