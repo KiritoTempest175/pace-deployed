@@ -12,7 +12,7 @@ import { SettingsModal } from './components/SettingsModal'
 import { ChatInterface } from './components/ChatInterface'
 import { Cpu, Zap, ArrowRight, ShieldCheck } from 'lucide-react'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
 const masteryCards = [
   {

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { telemetryStore } from '../utils/telemetryStore'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
 export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, onOpenSettings }) {
   const location = useLocation()

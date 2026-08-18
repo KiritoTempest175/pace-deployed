@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { MessageSquare, ArrowRight, Code2, BookOpen, Globe2 } from 'lucide-react'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
 export function RecentChats() {
   const [sessions, setSessions] = useState([

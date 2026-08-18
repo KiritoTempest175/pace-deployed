@@ -21,7 +21,7 @@ import {
 import { telemetryStore } from '../utils/telemetryStore'
 import { ThinkingIndicator } from './ThinkingIndicator'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
 const modesConfig = {
   coding: {

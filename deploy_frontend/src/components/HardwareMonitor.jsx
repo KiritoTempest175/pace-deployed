@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Cpu } from 'lucide-react'
 import { telemetryStore } from '../utils/telemetryStore'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'
 
 export function HardwareMonitor() {
   const [telemetry, setTelemetry] = useState({

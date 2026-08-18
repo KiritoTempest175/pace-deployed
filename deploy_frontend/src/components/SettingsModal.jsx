@@ -118,7 +118,7 @@ export function SettingsModal({ isOpen, onClose }) {
               <input
                 type="text"
                 readOnly
-                value="http://127.0.0.1:8000/api"
+                value={import.meta.env.VITE_API_BASE_URL || 'https://pace-backend-5g2x.onrender.com'}
                 style={{
                   backgroundColor: 'var(--bg-canvas)',
                   border: '1px solid var(--border-subtle)',
