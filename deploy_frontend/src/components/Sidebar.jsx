@@ -13,6 +13,7 @@ import {
   Code2,
   BookOpen,
   Globe2
+} from 'lucide-react'
 import { telemetryStore } from '../utils/telemetryStore'
 import { getSessionId } from '../utils/session'
 
