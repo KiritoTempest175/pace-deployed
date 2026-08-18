@@ -171,7 +171,9 @@ def generate(request: PredictRequest, x_session_id: str = Header("default")):
             global _gradio_client
             if _gradio_client is None:
                 from gradio_client import Client
-                _gradio_client = Client(AI_SERVICE_URL)
+                import os
+                hf_token = os.environ.get("HF_TOKEN")
+                _gradio_client = Client(AI_SERVICE_URL, hf_token=hf_token)
             
             job = _gradio_client.submit(
                 request.text,
