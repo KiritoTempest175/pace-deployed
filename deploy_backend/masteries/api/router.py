@@ -164,37 +164,52 @@ def generate(request: PredictRequest):
                 "speed_mode": speed
             }
 
-            async with httpx.AsyncClient() as client:
-                async with client.stream("POST", f"{AI_SERVICE_URL}/generate_stream", json=payload, timeout=120.0) as response:
-                    async for line in response.aiter_lines():
-                        if not line.strip():
-                            continue
-                            
-                        # The AI service sends NDJSON
-                        try:
-                            event = json.loads(line)
-                        except:
-                            continue
+            from gradio_client import Client
+            
+            client = Client(AI_SERVICE_URL)
+            job = client.submit(
+                request.text,
+                mode,
+                speed,
+                api_name="/predict"
+            )
 
-                        event_type = event.get("type")
+            # Gradio Client yields outputs iteratively if the function is a generator
+            for result in job:
+                # `result` is the string yielded by the Gradio function
+                if not result:
+                    continue
+                    
+                try:
+                    # In our case, gradio gives us the *entire* accumulated string from the generator so far in each tick if we yielded everything, but wait!
+                    # If we yield json strings line by line in our generator, gradio_client might yield the accumulated outputs, or the latest output.
+                    # Since our generator yields independent JSON strings, gradio actually returns the *latest* yielded value, not the accumulated one, but wait, `gradio_client` with `submit()` gives us exactly what was yielded!
+                    # Actually, if we yield a string per token, Gradio client might yield the string.
+                    # Gradio strings can contain multiple yielded lines if the generator is fast.
+                    last_line = result.strip().split("\n")[-1]
+                    event = json.loads(last_line)
+                except:
+                    continue
 
-                        if event_type == "token":
-                            content = event.get("content", "")
-                            assistant_accumulated_text += content
-                            tokens_generated += 1
-                            if ttft_ms is None:
-                                ttft_ms = int((time.time() - start_time) * 1000)
-                        elif event_type == "clear":
-                            assistant_accumulated_text = ""
+                event_type = event.get("type")
 
-                        yield f"data: {json.dumps(event)}\n\n"
+                if event_type == "token":
+                    content = event.get("content", "")
+                    assistant_accumulated_text += content
+                    tokens_generated += 1
+                    if ttft_ms is None:
+                        ttft_ms = int((time.time() - start_time) * 1000)
+                elif event_type == "clear":
+                    assistant_accumulated_text = ""
 
-                        now = time.time()
-                        if now - last_telemetry_emit >= 0.2:
-                            current_m = get_current_metrics("processing")
-                            update_last_execution_metrics(current_m)
-                            yield f"data: {json.dumps({'type': 'telemetry', 'metrics': current_m})}\n\n"
-                            last_telemetry_emit = now
+                yield f"data: {json.dumps(event)}\n\n"
+
+                now = time.time()
+                if now - last_telemetry_emit >= 0.2:
+                    current_m = get_current_metrics("processing")
+                    update_last_execution_metrics(current_m)
+                    yield f"data: {json.dumps({'type': 'telemetry', 'metrics': current_m})}\n\n"
+                    last_telemetry_emit = now
 
             # Save completed message to DB
             add_message(
