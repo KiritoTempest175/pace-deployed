@@ -1,9 +1,12 @@
 import json
+import uuid
 import time
+import asyncio
 from pathlib import Path
 import shutil
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Header
 from fastapi.responses import StreamingResponse
+from typing import Optional
 
 from masteries.api.schemas import (
     PredictRequest,
@@ -49,14 +52,14 @@ def get_telemetry():
 
 
 @router.get("/conversations")
-def list_conversations():
-    return get_conversations()
+def list_conversations(x_session_id: str = Header("default")):
+    return get_conversations(x_session_id)
 
 
 @router.post("/conversations")
-def create_new_conversation(req: CreateConversationRequest):
+def create_new_conversation(req: CreateConversationRequest, x_session_id: str = Header("default")):
     cid = create_conversation(
-        title=req.title or "New Session", workspace=req.workspace or "coding"
+        title=req.title or "New Session", workspace=req.workspace or "coding", session_id=x_session_id
     )
     return get_conversation(cid)
 
@@ -93,7 +96,7 @@ def predict(request: PredictRequest):
 
 
 @router.post("/generate")
-def generate(request: PredictRequest):
+def generate(request: PredictRequest, x_session_id: str = Header("default")):
     """
     Primary endpoint: accepts a text prompt from the frontend chat,
     proxies it to the AI Service (Hugging Face), streams output tokens,
@@ -112,10 +115,10 @@ def generate(request: PredictRequest):
     conversation_id = request.conversation_id
     if not conversation_id:
         title = request.text[:32] + ("..." if len(request.text) > 32 else "")
-        conversation_id = create_conversation(title=title, workspace=mode)
+        conversation_id = create_conversation(title=title, workspace=mode, session_id=x_session_id)
 
     # Persist user message to SQLite database
-    add_message(conversation_id, role="user", text=request.text)
+    add_message(conversation_id, role="user", text=request.text, session_id=x_session_id)
 
     def event_stream():
         if not _generate_lock.acquire(blocking=False):
@@ -247,6 +250,7 @@ def generate(request: PredictRequest):
                 text=assistant_accumulated_text,
                 source="actor-critic-ensemble",
                 status="Critic Validated",
+                session_id=x_session_id
             )
 
             final_metrics = get_current_metrics("completed")

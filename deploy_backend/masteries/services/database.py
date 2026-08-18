@@ -24,9 +24,17 @@ def init_db():
         title TEXT NOT NULL,
         workspace TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        session_id TEXT NOT NULL DEFAULT 'default'
     )
     """)
+
+    # Try to add session_id if upgrading an existing db
+    try:
+        cursor.execute("ALTER TABLE conversations ADD COLUMN session_id TEXT NOT NULL DEFAULT 'default'")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS messages (
@@ -45,12 +53,13 @@ def init_db():
     conn.close()
 
 
-def get_conversations():
+def get_conversations(session_id: str = "default"):
     init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id, title, workspace, created_at, updated_at FROM conversations ORDER BY updated_at DESC"
+        "SELECT id, title, workspace, created_at, updated_at FROM conversations WHERE session_id = ? ORDER BY updated_at DESC",
+        (session_id,)
     )
     rows = cursor.fetchall()
     conn.close()
@@ -110,7 +119,7 @@ def get_conversation(conversation_id: str):
     }
 
 
-def create_conversation(title: str, workspace: str, conversation_id: str = None) -> str:
+def create_conversation(title: str, workspace: str, conversation_id: str = None, session_id: str = "default") -> str:
     init_db()
     cid = conversation_id or f"chat-{uuid.uuid4().hex[:8]}"
     now = datetime.now(timezone.utc).isoformat()
@@ -118,8 +127,8 @@ def create_conversation(title: str, workspace: str, conversation_id: str = None)
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO conversations (id, title, workspace, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-        (cid, title, workspace, now, now)
+        "INSERT INTO conversations (id, title, workspace, created_at, updated_at, session_id) VALUES (?, ?, ?, ?, ?, ?)",
+        (cid, title, workspace, now, now, session_id)
     )
     conn.commit()
     conn.close()
@@ -136,7 +145,7 @@ def delete_conversation(conversation_id: str):
     conn.close()
 
 
-def add_message(conversation_id: str, role: str, text: str, source: str = None, status: str = None, msg_id: str = None) -> str:
+def add_message(conversation_id: str, role: str, text: str, source: str = None, status: str = None, msg_id: str = None, session_id: str = "default") -> str:
     init_db()
     mid = msg_id or f"msg-{uuid.uuid4().hex[:8]}"
     now = datetime.now(timezone.utc).isoformat()
@@ -150,8 +159,8 @@ def add_message(conversation_id: str, role: str, text: str, source: str = None, 
         # Fallback title generation from prompt
         title = text[:35] + ("..." if len(text) > 35 else "")
         cursor.execute(
-            "INSERT INTO conversations (id, title, workspace, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-            (conversation_id, title, "coding", now, now)
+            "INSERT INTO conversations (id, title, workspace, created_at, updated_at, session_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (conversation_id, title, "coding", now, now, session_id)
         )
     
     cursor.execute(
