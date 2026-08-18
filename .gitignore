@@ -1,0 +1,11 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv
+venv/
+uploads/
+*.sqlite3
+pace_database.db
+*.safetensors
+*.parquet
