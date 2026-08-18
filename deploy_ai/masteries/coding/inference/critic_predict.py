@@ -16,36 +16,33 @@ def evaluate_syntax_batch(
 ) -> list[float]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    target_dir = model_dir if os.path.exists(model_dir) else fallback_model
+    hf_repo = "kiritox07/pace-models"
 
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(target_dir)
-    except Exception:
-        tokenizer = None
-
-    if tokenizer is None and target_dir != fallback_model:
+    if os.path.exists(model_dir):
+        # Load local
         try:
-            tokenizer = AutoTokenizer.from_pretrained(fallback_model)
+            tokenizer = AutoTokenizer.from_pretrained(model_dir)
+            model = AutoModelForSequenceClassification.from_pretrained(model_dir, num_labels=2).to(device)
         except Exception:
             tokenizer = None
+            model = None
+    else:
+        # Load from Hugging Face Hub subfolder
+        print(f"[SYSTEM] Local model not found. Downloading {model_dir} from HF Hub ({hf_repo})...")
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(hf_repo, subfolder=model_dir)
+            model = AutoModelForSequenceClassification.from_pretrained(hf_repo, subfolder=model_dir, num_labels=2).to(device)
+        except Exception:
+            tokenizer = None
+            model = None
 
-    if tokenizer is None:
-        raise ValueError(
-            f"Failed to load tokenizer from '{target_dir}' or fallback '{fallback_model}'."
-        )
+    if tokenizer is None or model is None:
+        print(f"[SYSTEM] Failed to load from {hf_repo}. Falling back to {fallback_model}...")
+        tokenizer = AutoTokenizer.from_pretrained(fallback_model)
+        model = AutoModelForSequenceClassification.from_pretrained(fallback_model, num_labels=2).to(device)
 
     if getattr(tokenizer, "pad_token", None) is None:
         tokenizer.pad_token = tokenizer.eos_token
-
-    # Initialize with num_labels=2 for binary classification
-    try:
-        model = AutoModelForSequenceClassification.from_pretrained(
-            target_dir, num_labels=2
-        ).to(device)
-    except Exception:
-        model = AutoModelForSequenceClassification.from_pretrained(
-            fallback_model, num_labels=2
-        ).to(device)
 
     inputs = tokenizer(
         code_snippets,

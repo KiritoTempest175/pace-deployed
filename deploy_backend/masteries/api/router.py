@@ -218,8 +218,10 @@ def generate(request: PredictRequest, x_session_id: str = Header("default")):
                     # Gradio strings can contain multiple yielded lines if the generator is fast.
                     last_line = result.strip().split("\n")[-1]
                     event = json.loads(last_line)
-                except:
+                except Exception as ex:
+                    yield f": DEBUG JSON PARSE ERROR: {ex} on {repr(result)}\n\n"
                     continue
+                yield f": DEBUG RAW RESULT: {repr(result)}\n\n"
 
                 event_type = event.get("type")
 
