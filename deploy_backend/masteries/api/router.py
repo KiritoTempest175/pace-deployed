@@ -28,6 +28,7 @@ from masteries.services.database import (
 import threading
 
 _generate_lock = threading.Lock()
+_gradio_client = None
 
 router = APIRouter()
 
@@ -116,7 +117,7 @@ def generate(request: PredictRequest):
     # Persist user message to SQLite database
     add_message(conversation_id, role="user", text=request.text)
 
-    async def event_stream():
+    def event_stream():
         if not _generate_lock.acquire(blocking=False):
             yield f"data: {json.dumps({'type': 'status', 'content': 'Server is currently busy with another request. Please wait a moment and try again.'})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
@@ -164,10 +165,12 @@ def generate(request: PredictRequest):
                 "speed_mode": speed
             }
 
-            from gradio_client import Client
+            global _gradio_client
+            if _gradio_client is None:
+                from gradio_client import Client
+                _gradio_client = Client(AI_SERVICE_URL)
             
-            client = Client(AI_SERVICE_URL)
-            job = client.submit(
+            job = _gradio_client.submit(
                 request.text,
                 mode,
                 speed,
