@@ -171,7 +171,7 @@ def generate(request: PredictRequest):
                 request.text,
                 mode,
                 speed,
-                api_name="/predict"
+                api_name="/generate_stream_gpu"
             )
 
             # Gradio Client yields outputs iteratively if the function is a generator
